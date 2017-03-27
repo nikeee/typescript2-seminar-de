@@ -1,0 +1,492 @@
+\input{TypeScript2-Header.tex}
+
+\begin{document}
+
+\title{Neues in \ts 2}
+\subtitle{Eine Betrachtung von Neuerungen in \ts 2 mit Vergleich zu \ts 1}
+
+\input{Author.tex}
+
+\maketitle
+
+\begin{abstract}
+\input{Abstract.tex}
+\end{abstract}
+
+\section{Einleitung}
+% \subsection*{Was ist \ts?}
+\ts ist eine freie und quelloffene Programmiersprache, die \js um optionale, statische Typisierung erweitert. Sie bildet eine Obermenge von \js, was bedeutet, dass jedes gültige \js-Programm ebenfalls ein gültiges \ts-Programm darstellt.
+Der \ts-Compiler erzeugt aus den Quelltext-Dateien normales \js, welches wiederum auf allen Plattformen ausgeführt werden kann, die \js-Ausführung unterstützen.
+
+\subsubsection*{Ziele von \ts}
+Zu den Zielen von \ts gehört, das Typensystem, das \js-Programme zur Laufzeit besitzen, dem Entwickler und der IDE schon während der Entwicklungszeit abzubilden. Dadurch soll die Tool-Unterstützung für den Entwickler durch verbessertes Type-Checking oder besseren Refactoring-Möglichkeiten zu einer wartungsfreundlicheren und fehlerarmeren Codebase führen als bei traditionellen \js-Projekten. Die statische Typisierung bleibt hierbei optional, was den Vorteil darstellt, dass bestehende \js-Codes einfacher nach \ts portiert werden können. Der Compiler verfügt über Typinferenz und kann somit fehlende Typangaben anhand der Verwendung im Quelltext automatisiert folgern.
+
+Ein weiteres Ziel von \ts ist es, Features, die erst in neueren \js-Versionen verfügbar sind, schon jetzt für den Entwickler zur Verfügung zu stellen. Dabei hat der Entwickler die Möglichkeit, den generierten \js-Code auch auf \js-Plattformen auszuführen, die nur ältere \js-Stan\-dards unterstützen, ähnlich zu dem Projekt ,,Babel.js''. Zu diesen Features zählen Klassen, Iteratoren, Generatoren und vieles mehr.
+
+\ts besitzt keine eigene Standardbibliothek, sondern stützt sich vollkommen auf die bereits vorhandene Standardbibliothek von \js. Es entstehen bei der Ausführung von kompiliertem \ts-Code somit keine zusätzlichen Abhängigkeiten, die installiert werden müssten.
+
+Um es dem Entwickler zu ermöglichen, bereits etablierte \js-Frameworks in \ts zu verwenden, können sogenannte ,,Declaration Files'' verwendet werden. Diese sind vergleichbar mit ,,Header Files'' aus C/C++ und liefern dem Compiler Typeninformationen über die jeweiligen Frameworks. Mit Hilfe dieser Deklarationsdateien wird die gesamte \js-Standardbibliothek für \ts typisiert zur Verfügung gestellt. Mehr zu Declaration Files und dem damit verbundenen Ökosystem im Abschnitt ,,\nameref{ecosystem}''.
+
+Der \ts-Compiler verfügt über diverse Optionen, mit denen die Typüberprüfung und der generierte \js-Quelltext angepasst werden können.
+
+\section{Änderungen am Typensystem}
+Das neue \ts kommt mit vielen neuen Features am Typensystem, mit denen sich mehr Situationen im Typsystem abbilden lassen. Um dies zu erreichen, werden bspw. neue Typen eingeführt sowie die Typüberprüfung erweitert.
+
+\subsection{Nullability}
+\label{nullability}
+Mit \ts 2 besitzt der \ts-Compiler die neue Option \incode{strictNullChecks}. Wird diese Option aktiviert\footnote{Siehe Abschnitt ,,\nameref{options}``}, so bekommen die Werte \tsnull und \tsundefined ihren eigenen Typen. Alle weiteren Typen sind anschließend standardmäßig nicht-nullable und nicht-undefinable (vergleiche Grafik \ref{fig:Nullable} und \ref{fig:Non-Nullable}). Dies bedeutet, dass der Compiler garantieren kann, dass zur Laufzeit keine Fehler durch invalide Referenzen (\tsnull oder \tsundefined) auftreten. Wenn bspw. eine Methode den Rückgabewert \tsstring deklariert hat, so ist garantiert, dass diese niemals die Werte \tsnull oder \tsundefined zurückgibt.
+
+\begin{figure}[htb]
+	\centering
+	\includegraphics[width=0.15\textwidth]{img/string_nullable.tikz}
+	\includegraphics[width=0.15\textwidth]{img/number_nullable.tikz}
+	\includegraphics[width=0.15\textwidth]{img/boolean_nullable.tikz}
+	\caption{Nullable Types ohne \incode{strictNullChecks}}
+	\label{fig:Nullable}
+\end{figure}
+
+\begin{figure}[htb]
+	\centering
+	\includegraphics[width=0.15\textwidth]{img/string.tikz}
+	\includegraphics[width=0.15\textwidth]{img/number.tikz}
+	\includegraphics[width=0.15\textwidth]{img/boolean.tikz}
+	\includegraphics[width=0.10\textwidth]{img/undefined.tikz}
+	\includegraphics[width=0.10\textwidth]{img/null.tikz}
+	\caption{Non-Nullable Types mit \incode{strictNullChecks}}
+	\label{fig:Non-Nullable}
+\end{figure}
+
+Diese Änderung am Typsystem macht es umso wichtiger, dass die Declaration Files von Nicht-\ts-Librarys korrekt sind, da der Compiler andernfalls nicht in der Lage ist, Typfehler zu finden.
+
+Mit dieser Erweiterung soll die Fehleranfälligkeit gegenüber \tsnull- oder \tsundefined-Verweisen zur Laufzeit dezimiert werden.  Um die Kompatibilität zu wahren, ist dieses Compilerflag standardmäßig ausgeschaltet. Es empfiehlt sich allerdings, neue Projekte von Beginn an mit diesem Flag eingeschaltet zu entwickeln um so möglicherweise notwendigen Portierungsarbeiten vorzubeugen.
+
+Folgende Fehler\basedon{Daniel Rosenwasser}{ts20-beta} werden bspw. vom Compiler erkannt:
+
+\tsfile{code/nullability/sample_1.ts}
+
+Ist allerdings gewünscht, dass eine Variable die Werte \tsnull bzw. \tsundefined annehnen kann, so kann dies durch explizite Deklaration mit Hilfe von Union-Types (eingeführt in \ts 1.4) umgesetzt werden. Das obige Beispiel kann entsprechen abgeändert werden:
+
+\tsfile{code/nullability/sample_2.ts}
+
+Da der Compiler nun davon ausgehen muss, dass \tsin{foo} den Wert \tsnull annehmen kann, ist der Zugriff auf die \tsin{length}-Eigentschaft nicht mehr garantiert sicher. Der Compiler gibt somit den Fehler ``Object is possibly `null''' aus.
+
+Durch den \emph{non-null-assertion-Operator} mit dem Symbol \tsin{!} kann die Typüberprüfung auf \tsnull oder \tsundefined auch in Einzelfällen überschrieben werden. Für das aktuelle Beispiel könnte der Compilerfehler mit \tsin{console.log(foo!.length);} unterdrückt werden. In der Regel ist dies allerdings nicht erforderlich und könnte dazu führen, dass der Compiler mögliche Typfehler nicht erkennt.
+
+\subsection{Kontrollflussanalyse}
+Neu in \ts 2 ist ebenfalls die Analyse des Typens anhand des Kontrollflusses innerhalb des Programms. Der Typ einer Variable ist somit nicht konstant sondern hängt vom aktuellen Kontext der Anweisungszeile ab.
+Wird explizit auf den Typen oder Wert einer Variable geprüft, so kann der Compiler garantieren, dass der Typ \emph{nur innerhalb} eines entsprechenden Anweisungsblocks oder \tsin{switch}-Falls bestimmte Eigenschaften besitzt.
+
+Bezogen auf das Beispiel könnte der Fehler bspw. durch das Einfügen einer einfache \tsin{if}-Abfrage behoben werden.
+
+\tsfile{code/nullability/sample_if_guard.ts}
+
+Dieser Anwendungsfall ist nicht beschränkt auf Überprüfung auf \tsnull oder \tsundefined, sondern kann auf jede Kombination von Typen angewendet werden. Folgendes Beispiel zeigt die Unterscheidung zwischen einem \tsstring und einem \tsin{string[]}.
+
+\tsfile{code/nullability/sample_get_last_name.ts}
+
+Der Rückgabetyp der Funktion \tsin{getLastName} wurde vom Compiler zu \tsstring inferiert und muss nicht explizit angegeben werden.
+
+Die Kontrollflussanalyse berücksichtigt auch Schleifen bei der Typinferenz. Wird bspw. ein Wert nur unter einger bestimmten Bedingung zugewiesen, so erkennt dies der Compiler und gibt einen entsprechenden Fehler aus:
+
+\tsfile{code/nullability/sample_long_string.ts}
+
+\subsubsection{Undefined}
+Durch die neue Typtrennung wird \tsundefined ebenfalls für optionale Parameter oder Attribute verwendet. Zuvor wurden optinale Parameter durch ein \tsin{?} hinter dem Variablennamen ermöglicht. Diese Vorgehensweise bleibt bestehen und stellt immer noch die bevorzugte Variante dar. Die \tsin{?}-Schreib\-wei\-se ist nunmehr nur noch eine Verkürzung eines Union-Types mit \tsundefined. Somit sind folgende Funktionsdeklarationen\basedon{Daniel Rosenwasser}{ts20-beta} identisch:
+
+\tsfile{code/undefined/sample_optional.ts}
+
+\subsubsection{Undefined und Null in Ausdrücken}
+Seit Version 2.2 überprüft die Kontrollflussanalsyse auch, ob ein Operand bei Ausdrücken \tsnull oder \tsundefined ist. Ist das Flag \incode{strictNullChecks} aktiviert, überprüft der Compiler auch, ob etwaige Operanden mit Union-Types die Werte \tsnull oder \tsundefined beinhalten. Bei folgenden Operationen werden die Operanden überprüft und ggf. als Fehler gekennzeichnet:
+\begin{itemize}
+\item \tsin{+}, wenn einer der Operanden vom Typ \tsany oder \tsstring ist.
+\item Die Operatoren \tsin{-}, \tsin{*}, \tsin{**}, \tsin{<<}, \tsin{>>}, \tsin{>>>}, \tsin{&}, \tsin{|}, \tsin{^} etc.
+\item Die Vergleichsoperatoren \tsin{<}, \tsin{>}, \tsin{<=}, \tsin{>=} und \tsin{in}.
+\item \tsin{instanceof}, allerdings nur der rechte Operand
+\item Die unären Operatoren \tsin{+}, \tsin{-}, \tsin{~}, \tsin{++} und \tsin{--}
+\end{itemize}
+
+Oft wird mit optionalen Parametern verglichen, ohne dass geprüft wird, ob dieser überhaupt übergeben wurde. Da es sich bei optionalen Parametern um einen Union-Type handelt, werden diese Fehler nur gefunden wenn das Compilerflag \incode{strictNullChecks} aktiviert ist. Diese Situation wird in diesem Beispiel illustriert:
+
+\tsfile{code/undefined/null-check-operands/sample_0.ts}
+
+Der Fehler könnte behoben werden, indem dem Max-Parameter ein default-Wert zugewiesen oder er als Pflichparameter deklariert wird. Auch eine vorherige Überprüfung auf \tsundefined und entsprechende Behandlung der Situation könnte den Fehler beheben.
+
+\subsection{Weitere neue Typen}
+\tsthis, \tsnever, \tsobject und Literal-Typen sind neue Typen, die in \ts 2 hinzugekommen sind. Nachfolgend werden diese mit Beispielen erläutert.
+
+\subsubsection{Literal-Typen}
+In \ts 1.8 wurden die sogenannten ,,String Literal Types'' eingeführt, mit denen Variablen auf einzelne String-Werte beschränkt werden können. Verwendet man diese in Kombination mit Union-Types, lässt sich eine Art String-Enum erzeugen, also Strings, die nur bestimmte Werte annehmen können:
+
+\tsfile{code/types/string_literal.ts}
+
+In \ts 2 wurde diese Funktionalität auf \tsboolean und \tsnumber ausgeweitet. Auch jeder Enum-Member besitzt nun seinen eigenen Literal-Typen. Sie können alle auch als Union-Type eingesetzt werden.
+
+\tsfile{code/types/number_enum_literal.ts}
+
+Union-Types müssen keine Kombination von Literal-Typen des selben Basistyps sein, sondern können beliebig mit jedem anderen Typen gemischt werden. Auch die Kontrollflussanalyse beachtet diese Kombination an Typen.
+
+\tsfile{code/types/mixed_union_types.ts}
+
+\paragraph*{Typinferenz}
+Die Typinferenz in \ts 2 verhält sich bei einer direkten Zuweisung je nach Deklaration der entsprechenden Variable verschieden. Wird eine Variable mittels \tsvar oder \tslet deklariert und direkt ein primitiver Typ zugewiesen, wird der weiteste, gültige Typ ausgewählt, bspw. \tsstring oder \tsnumber. Wird \tsconst oder \tsreadonly verwendet, wird der schmalste, genauste Typ verwendet. Dieses Verhalten hat den Hintergrund, dass sich der Typ von Variablen im Programm durch weitere Zuweisungen nicht verändern kann. Da Konstanten nur eine einzige Zuweisung erlauben, ist dort möglich, den genausten, verfügbaren Typen zu anzuwenden. Bei Konstanten ist der Typ aus diesem Grund häufig ein Literal-Typ. Das folgende Beispiel zeigt, wie Konstanten zu dem entsprechenden Literal-Typen (bspw. \tsin{"Hello!"}) und Varialben zu dem weitesten Typen (bspw. \tsstring) gefolert werden.
+
+\tsfile{code/types/infer_var_let.ts}
+
+\paragraph*{Tagged Unions}
+Mittels Typinferenz, Literal Types und Union Types lassen sich auch Tagged Unions realisieren. Ein Tagged Union wird auch algebraischen Datentyp genannt und besteht in \ts aus mehreren, vereinigten Typen, die sich durch ein ,,Tag'' unterscheiden lassen. So können bspw. zwei Interfaces deklariert werden\basedon{Daniel Rosenwasser}{ts20-rc}, die beide ein Attribut aufweisen, das sich nur durch den Typ unterscheidet.
+
+\tsfile{code/types/tagged_unions_0.ts}
+
+Das Attribut \incode{success} kann somit als Tag verwendet werden, sobald die beiden Interfaces vereinigt werden:
+
+\tsfile{code/types/tagged_unions_1.ts}
+
+Tagged Unions sind nicht nur mit \incode{boolean}-Typen möglich, sondern mit jeglicher Art von vereingten Typen. Denkbar wäre z. B. auch gewesen, String-Literal-Types oder Enum-Literal-Types zu verwenden, um die Interfaces anhand ihres Tags zu unterscheiden.
+
+\subsubsection{this-Typ für Funktionen}
+Für Funktionen ist es nun möglich, zu spezifizieren, welchen Typ \tsthis innerhalb der jeweiligen Funktion haben soll. Standardmäßig besitzt \tsthis den Typ \tsany. Innerhalb von Klassen ist \tsthis zwar vom Typen der Klasse, für Referenzen auf diese Methode besitzt dort \tsthis ebenfalls den Typen \tsany.
+Die Deklaration wird als Funktionsparameter umgesetzt, wobei dieser nicht in den emittierten \js-Code übernommen wird. Folgendes Beispiel\basedon{das TypeScript-Handbuch}{ts-handbook-ts-20} zeigt eine freie Funktion, in der \tsthis mit dem Typ \tsvoid gekennzeichnet wird. Innerhalb kann \tsthis also nicht verwendet werden:
+
+\tsfile{code/types/this/free_function.ts}
+
+Die Überprüfung auf eine implizite \tsany-Zuweisung des \tsthis (wie im Beispiel bei der Funktion \incode{foo}) lässt sich in den Compileroptionen abschalten. Mehr dazu im Abschnitt ,,\nameref{options}``.
+
+Nützlich ist dieses Feature vorallem bei Callbacks, bei denen häufig versehentlich mit dem falschen \tsthis gearbeitet wird.
+Im folgenden Beispiel wird ein Interface \incode{UIElement} deklariert, welches bei der Funktion \incode{addListener} einen Callback erwartet. Für diesen Callback wird explizit gesagt, dass \tsthis innerhalb des Callbacks \tsvoid sein soll. Wird dann versucht, einen Callback mit dem Verweis auf \incode{h.onEvent} hinzuzufügen, wird dies als Fehler erkannt, da für die \incode{onEvent}-Funktion als \tsthis-Typ statt \tsvoid \incode{Handler} angegeben wurde. Dies ist eine häufige Fehlerquelle, da sich beim internen Aufruf des Callbacks der \tsthis-Verweis ändert. Beheben lässt sich dieser Fehler durch eine Lambda-Funktion.
+
+\tsfile{code/types/this/callback.ts}
+
+Innerhalb von Instanzfunktionen lässt sich der Typ von \tsthis auch vollständig überschreiben oder zu einem anderen ändern, wie dieses Beispiel zeigt:
+
+\tsfile{code/types/this/silly_sample.ts}
+
+Dieses Feature ist nicht zu verwechseln mit dem polymorphischen \tsthis-Typ, der in \ts 1.7 eingeführt wurde\seegithub{TypeScript-Pull-Request 4910}{polymorphic-this}.
+
+\subsubsection{never-Typ}
+Um über die Kontrollflussanalyse ausdrücken zu können, dass Variablen niemals einen Wert annehmen oder Funktionen niemals terminieren werden, wurde der \tsnever-Typ eingeführt. Funktionen, die den Rückgabewert \tsvoid besitzen, geben zwar keinen Wert zurück, können allerdings terminieren. Dies ist bei Funktionen mit \tsnever-Rückgabetyp nicht der Fall, wenn sie z. B. in jedem Fall in eine Endlosschleife laufen oder eine Exception werfen.
+
+In dem folgenden Beispiel besitzen die Variablen \incode{bazUnreached0} und \incode{bazUnreached1} den gefolgerten Typ \tsnever, da die entsprechenden Zuweisungen niemals erreicht werden. Die Variable \incode{baz} hat den Typ \tsvoid, da die Funktion \tsin{someVoid} zwar terminiert, aber keinen Wert zurück gibt. Zur Laufzeit hat die Variable \incode{baz} dementsprechend den Wert \tsundefined.
+
+\tsfile{code/types/never_0.ts}
+
+Hat der Compiler den Typ einer Variable zu \tsnever gefolgert, so steht fest, dass die entsprechende Zuweisung zur Laufzeit niemals stattfinden wird, da die Stelle niemals erreicht wird. Dies macht sich besonders bemerkbar, wenn die Kontrollflussanalyse gefolgert hat, dass z. B. ein Ausführungszweig niemals erreicht wird:
+
+\tsfile{code/types/never_1.ts}
+
+\tsnever ist ein Untertyp jedes Typs. Somit kann einer Variable beliebigen Typs immer der Typ \tsnever zugewiesen werden, jedoch nicht umgekehrt, wie folgendes Beispiel zeigt.
+
+\tsfile{code/types/never_2.ts}
+
+\subsubsection{object-Typ}
+\js besitzt zwei Arten von Typen: Primitive und Nicht-Primitive. Der primitive Typ lässt sich wie folgt definieren:
+
+\tsfile{code/types/object/primitive_types.ts}
+
+Die Menge der nicht-primitiven Typen war vor \ts 2.2 nicht abbildbar. Zu diesem Zweck wurde der Typ \tsobject eingeführt. Die Typen der \js-Standardbibliothek wurden dementsprechend angepasst, um APIs wie \incode{Object.create} oder \incode{Object.getPrototypeOf} richtig abzubilden. Object.create seit Version 2.2 wie folgt definiert:
+
+\tsfile{code/types/object/create.ts}
+
+\paragraph*{\tsObject, \tsobject und \tsobj}
+Vorher war es bereits möglich, \tsObject und \tsobj zu verwenden. Worin unterscheiden sich diese nun? Der \tsObject-Typ steht für eine Menge an Funktionen, die alle \js-Objekte gemeinsam haben (wie z. B. \tsin{toString} oder \tsin{valueOf}), wohingegen \tsobject für alle nicht-primitiven Typen steht.
+\tsobj steht für ein Objekt, das keine eigenen Member hat und stellt -- als Typ verwendet -- semantisch keinen Unterschied zu \tsObject dar.
+
+Betrachtet man die Typen im vergleich, wird klar, dass \tsObject und \tsobj primitve Werte zulassen:
+
+\tsfile{code/types/object/diff.ts}
+
+
+\section{Syntaxerweiterungen}
+Neben den erweiterten Typensystem bringt \ts 2 auch viele Neuerungen in der Syntax. Die meisten Neuerungen in der Syntax stammen direkt aus \esss oder verbessern \ts-Spezifische Features, wie z. B. die Sichtbarkeit.
+
+\subsection{Trailing Commas}
+Seit \es{5} (ES5) können Objekt- und Array-Literale optionale Kommata in der letzten Zeile haben, ohne als Syntaxfehler zu gelten. In \es{2017} (ES2017) wurde dieses Feature auch auf Funktionsparameter ausgeweitet\footnote{Vgl. Mozilla Developer Network zu ,,JavaScript Trailing Commas''}.
+
+\tsfile{code/syntax/trailing/objects_arrays.ts}
+
+\ts 2 unterstützt nun auch Trailing-Commas in Funktionsparametern. Da \ts Enum-Typen besitzt, kann auch dort mit Trailing-Commas gearbeitet werden.
+
+Durch die Verwendung von Trailing-Commas kann erzielt werden, dass Versionsunterschiede (,,Diffs'') der Versionsverwaltung kleiner ausfallen und die Author-Attribution der entsprechenden Code-Zeile nicht unrechtmäßig verändert wird, wenn bspw. ein Funktionsparameter hinzugefügt wird. Wird an einem Projekt mit vielen Personen gearbeitet, empfiehlt es sich, mit Trailing-Commas zu arbeiten, um z. B. mit \incode{git blame} einfacher den rechtmäßigen Autor der Codezeile zu finden. \js gleicht sich hiermit vielen moderne Sprachen, die diese Syntax ebenfalls erlauben, bspw. Rust, Go oder \cs.
+
+\subsection{Abstract Propertys und Accessors}
+In Version 1.6 wurden abstrakte Klassen eingeführt. Abstrakte Klassen, sind Klassen, von denen keine Instanz erstellt werden kann. Stattdessen muss eine abgeleitete Klasse erstellt werden, die von der abstrakten Klasse erbt. Von der abgeleiteten Klasse kann anschließend eine Instanz erstellt werden. Die abstrakte Klasse kann zusätzlich angeben, dass die abgeleitete Klasse bestimmte Methoden implementieren muss. Abstrakte Klassen und Methoden werden wie in anderen Programmiersprachen mit dem \tsabstract-schlüsselwort gekennzeichnet. Der Konstruktor der Oberklasse wird wie in \js mittels \tsin{super} aufgerufen.
+
+Ab \ts 2 können abstrakte Klassen nicht nur abstrakte Methoden, sondern auch abstrakte Attribute und abstrakte Getter/Setter besitzen. Folgendes Beispiel zeigt eine abstrakte Klasse \incode{Base} mit einer abgeleiteten Klasse \incode{DerivedLong}, die von der abstrakten Klasse erbt:
+
+\tsfile{code/syntax/abstract/abstract_0.ts}
+
+Da es sich bei dem Attribut \incode{value} um ein Getter/Setter handelt, können diese auch durch eine Variable in der Basisklasse implementiert werden, da Variablenattribute genauso referenziert werden wie Getter/Setter-Funktionen. Außerdem können die Variablen inline initialisiert werden. Der Konstruktor kann letztendlich weggelassen werden, da er nur noch den Basiskonstruktor aufruft, was automatisch passiert. Für \incode{DerivedLong} lässt sich also auch eine größtenteils äquivalente, aber kürzere Klasse \incode{DerivedShort} schreiben:
+
+\tsfile{code/syntax/abstract/abstract_1.ts}
+
+Der einzige Unterschied zwischen diesen beiden Klassendefinitionen ist, dass im emittierten \js-Code bei \incode{DerivedLong} im Konstruktor mittels \tsin{Object.defineProperty} eine Property angelegt wird, wohingegen bei \incode{DerivedShort} eine einfache Variable verwendet wird. Die Attribute der Instanzen beider Klassen lassen sich trotzdem identisch ansprechen.
+
+\subsection{Private und Protected Constructors}
+Die Sichtbarkeit von Konstruktoren kann mit \ts 2 auf \tsprotected und \tsprivate eingeschränkt werden. Wie in anderen objektorientierten Sprachen, die Sichtbarkeit auf Klassenmitglieder erlauben, lassen sich hiermit bspw. abstrakte Klassen realisieren, deren Konstruktor \tsprotected ist. Mit mit einem \tsprivate-Konstruktor könnte das Singleton-Entwurfsmuster umgesetzt werden.
+
+\subsection{Index-Zugriff mit Punkt-Notation}
+Der Zugriff auf Attribute von Objekten kann in \js auf zwei verschiedene Arten getätigt werden: \tsin{foo.bar} und \tsin{foo["bar"]}. In \ts 1 war es nicht möglich, bei Typen, die eine Index-Signatur besitzen, die Punkt-Notation für den Attributzugriff zu verwenden. In \ts 2 ist dies nun wie folgendes Beispiel zeigt möglich:
+
+\tsfile{code/syntax/dot-accessor/sample_0.ts}
+
+Diese Punkt-Notation ist \textbf{nur} bei Typen mit \textit{expliziter \tsstring-Index-Signatur} -- wie im Beispiel gezeigt -- verfügbar. Bei einer \tsnumber-Index-Signatur würde es sich um einen Syntaxfehler handeln, da z. B. \incode{foo.3} kein gültiges \ts ist.
+
+\subsection{Object-Spread und -Rest}
+In \es{2017} wurden die Operation Rest und Spread für Objekte spezifiziert. Sie verhalten sich analog zu den Rest und Spread für Arrays bzw. Funktionsparameter, welche in \ts 1.5 eingeführt wurden. Spread wird bei der Objekterstellung verwendet und kopiert alle Werte eines Objektes in ein neues Objekt. Dabei werden Referenzen auf andere Objekte ebenfalls nur kopiert, des erfolgt somit keine tiefe Kopie, sondern eine ,,shallow copy''. Folgendes Beispiel zeigt das einfache Kopieren der Attribute:
+
+\tsfile{code/syntax/spread/sample_0.ts}
+
+Es können auch mehrere Objekte in ein neues expandiert werden. Ein besonders praktischer Anwendungsfall dafür ist, wenn eine Funktion ein Options-Objekt annimmt, für das es auch Default-Optionen gibt. Die Syntax bleibt hierbei gleich, die Objekte werden schlicht zusammengeführt, wobei das letzte Objet immer das vordere überschreibt:
+
+\tsfile{code/syntax/spread/sample_1.ts}
+
+Seit \es{2015} existiert deconstructing von Objekten, was im Kontext des Beispiels von Oben wie folgt verwendet werden könnte:
+
+\tsfile{code/syntax/spread/sample_2.ts}
+
+Wird beim Deconstructing die \incode{...}-Notation auf der linken Seite verwendet, ist dies eine Rest-Operation. Sie stellt das Gegenteil der Spread-Operation dar. Es wird ein Objekt erstellt, das alle restlichen Attribute beinhaltet:
+
+\tsfile{code/syntax/spread/sample_3.ts}
+
+Ein häufiger Anwendungsfall hiervon ist, wenn nur bestimmte Werte eines Option-Objektes benötigt werden.
+
+\subsection{Async und Await für ES5/3}
+Obwohl \tsasync und \tsawait erst in \es{2017} Teil des Standards sind, ist es möglich, diese Features in Kombination mit ES3/5 als Ziel-Plattform zu verwenden.
+
+Wird der Code zu ES2015 oder ES2016 kompiliert, werden die entsprechenden Verwendungen von \tsawait durch Generator-Ausdrücke mit \tsyield ersetzt. Verwendet wird hierzu Hilfs-Code, den der Compiler zusätzlich in den \js-Code emittiert. Da ES2015 eine Promise-Klasse standardisiert, ist hier kein Polyfill nötig.
+
+Ist als Ziel-Plattform ES3 oder ES5 konfiguriert, so besitzt die Ausführungsplattform weder \tsasync/\tsawait-Support, noch Generatoren, noch standardisierte Promises. Für die Generatoren und den Awaiter emittiert der Compiler an der Stelle wieder Hilfs-Code. Für die fehlende Promise-Im\-ple\-men\-tie\-rung wird eine externe Library wie z. B. ,,bluebird'' oder ,,q'' benötigt. Das Fehlen einer Promise-Library wird vom \ts-Compiler nicht angemerkt, da in den \ts-Stan\-dard\-de\-fi\-ni\-tio\-nen ein Promise definiert ist. Dieses Verhalten kann mit dem Compilerflag \incode{--lib} geändert werden\footnote{Siehe Abschnitt ,,\nameref{options}''} .
+
+\section{Schlüsselwörter}
+\ts 2 kommt mit neuen Schlüsselwörtern, die es der Sprache weiter ermöglichen, Typen genauer zu spezifizieren oder einzuschränken, als zuvor.
+
+\subsection{readonly}
+Das neue \tsreadonly-Schlüsselwort ist ein Modifier für Attribute. Da \tsconst nur bei Variablendeklarationen verwendbar ist, ist \tsreadonly für Attribute von Klassen und Interfaces gedacht. Ein als \tsreadonly gekennzeichnetes Attribut kann nur einmalig zugewiesen werden, wie bei dem \tsconst-Schlüsselwort für Variablen. Die Zuweisung muss dabei in einem Objekt-Initializer oder in dem Konstruktor der Klasse erfolgen. Es lässt sich in Typaliasen, Interfaces und Klassendefinitionen verwenden. Eine Verwendung in einem Interface \incode{Vector2} bzw. einer Klasse \incode{Vector2Class} könnte bspw. so erfolgen:
+
+\tsfile{code/keywords/readonly/readonly_0.ts}
+
+Nützlich ist dies vorallem für die Implementierung von Im\-mu\-ta\-ble-Da\-ta-Types, also unveränderlichen Datentypen. Durch Un\-ver\-än\-der\-lich\-keit kann die Komplexität und Fehleranfälligkeit -- vorallem gegenüber Nebenläufigkeit -- verringert werden. Für das Beispiel des unveränderlichen \incode{Vector2} könnte eine \incode{add}-Funktion wie folgt umgesetzt werden:
+
+\tsfile{code/keywords/readonly/readonly_1.ts}
+
+Im Gegensatz zu \tsconst, handelt es sich bei \tsreadonly um ein Feature, das in noch keinem \ess verankert ist und deshalb in \js nicht existiert. Der \tsreadonly-Modifier wird deshalb nicht in den kompilierten \js-Quelltext emitiert und hat -- im Gegensatz zu \tsconst -- keine Auswirkungen auf die Beschreibbarkeit von Attributen während der Laufzeit. \tsreadonly dient nur dem Type-Checker des \ts-Compilers.
+
+\subsection{keyof}
+Bei vielen \js-Bibliotheken kommt es vor, dass ein Name eines Attributes übergeben werden muss. Bisher konnte man diese Typisierung nicht genau abbilden und musste auf Strings oder String-Literaltypen zurückgreifen. Verwendet man \tsstring als Typ, kann der Compiler eventuelle Tippfehler von Attributnamen nicht finden. Die herangehensweise über String-Literaltypen hat dieses Problem nicht, sorgt allerdings für aufwändigeres Refactoring. Einige Fälle lassen sich auch damit nicht abbilden, bspw. wenn als Typ der Typ der eines Objektes mit Index-Signatur verwendet werden soll.
+Um diese Fälle abzubilden, wurde das Schlüsselwort \tskeyof eingeführt. Es wird wie folgt verwendet:
+
+\tsfile{code/keywords/keyof/keyof_0.ts}
+
+\tskeyof kann überall verwendet werden, wo andere Typen verwendet werden können, da es sich um eine Art Makro handelt, das aus dem übergebenen Typen ein Union-Type über die Attributnamen erstellt.
+
+\tsfile{code/keywords/keyof/keyof_1.ts}
+
+Anzumerken ist hier, dass der Compiler den Rückgabewert automatisch zu \tsnumber folgert. Enthält das Vektor-Interface andere Typen als \tsnumber, wird der Rückgabewert zu einem Union-Type gefolgert:
+
+\tsfile{code/keywords/keyof/keyof_2.ts}
+
+\subsection{Lookup-Types}
+Mit Hilfe von Lookup-Types kann auf den Typen eines oder mehrerer Attribute eines bestimmten Typs zugegriffen werden. Die Syntax gleicht dem eines Array-Zugriffes bzw. eines Attribut-Zugriffs, jedoch auf dem Typen und nicht auf einer Instanz des Typs.
+
+\tsfile{code/keywords/keyof/lookup_0.ts}
+
+Mit diesem Zusatz kann die \tsin{getProp}-Funktion aus dem obigen Beispiel mit Generics verfeinert werden, da den Compiler zur Compile-Time evtl. bekannt sein könnte, genau welche Konstante bzw. welcher Typ übergeben wird.
+
+\tsfile{code/keywords/keyof/keyof_3.ts}
+
+Ist dem Compiler nicht genau bekannt, welcher Typ übergeben wird (im Beispiel für \tsin{key}), verhält sich der Rückgabewert wie bei der \tsin{getProp}-Funktion.
+
+\subsection{Mapped Types}
+Mapped Types ermöglichen es, Typen eines Interfaces zu anderen Interfaces abzubilden. Angenommen, es existiert ein Interface  \incode{Point2} und ein Schwester-Interface \incode{ReadonlyPoint2}, das die selben Attribute besitzt, sie allerdings auf Lesezugriff beschränkt. Zusätzlich wird eine Methode erstellt, die ein \incode{Point2}-Objekt annimmt und ein \incode{ReadonlyPoint2}-Objekt zurückgibt\basedon{Martin Schulz}{ms-mapped-types}:
+
+\tsfile{code/keywords/mapped/mapped_0.ts}
+
+Wird das \incode{Point2}-Interface durch Refactoring erweitert, muss das Schwester-Interface \incode{ReadonlyPoint2} zusätzlich geändert werden. Mit der Hilfe von Lookup Types und Mapped Types ist es möglich, das Schwester-Interface aus dem \incode{Point2}-Interface abzuleiten. So bleibt das Schwester-Interface stets aktuell, wenn das ursprüngliche Interface geändert wird.
+
+Die Standard-Typen von \ts kommen mit einem generischen Typalias namens \tsin{Readonly<T>} (in der \incode{lib.es6.d.ts}). Dieses Typ sieht wie folgt aus:
+
+\tsfile{code/keywords/mapped/readonly.ts}
+
+Um mit diesem Typen ein von \incode{Point2} abgeleiteten, unveränderlichen Typen zu erstellen, muss der veränderliche Typ nur als Typenparameter von \tsin{Readonly<T>} übergeben werden. Das Beispiel würde also wie folgt aussehen:
+
+\tsfile{code/keywords/mapped/mapped_1.ts}
+
+An dieser Stelle benutzt der \tsin{Readonly<T>}-Typalias das Mapped-Types-Feature. Geht man die Auflösung der Typen Schritt-für-Schritt durch, wird klarer, wie dieser Typ funktioniert. Das Schlüsselwort \tsin{in} dient dabei als eine Art Schleife, die auf Typebene iteriert:
+
+\tsfile{code/keywords/mapped/mapped_2.ts}
+
+Das Mapped-Type-Feature ist nicht nur beschränkt auf das Anbringen von \tsreadonly-Einschränkungen. In den Standard-Typen von \ts sind bspw. auch Typaliase enthalten, die alle Attribute eines Typs optional machen (\tsin{Partial<T>}). Mapped Types können auch selbst implementiert werden, z. B. um alle Attribute eines Typs nullable zu deklarieren. Denkbar wäre auch, ein Meta-Interface zu entwerfen, das alle Attribute eines anderen Interface besitzt, allerdings mit jedem Attribut als String, welches das ursprüngliche Attribut beschreibt:
+
+\tsfile{code/keywords/mapped/nullable.ts}
+
+Der \tsin{Readonly<T>}-Typ wird in der ES6-Standardbibliothek auch als Rückgabewert für die Funktion \tsin{Object.freeze} verwendet, welche ein Objekt unveränderlich zur Laufzeit macht.
+
+\subsection{Modul-Deklarationen}
+Wird im Code ein Modul verwendet, welches noch keine genaue Typspezifierung besitzt, aber trozdem als eine Art Platzhalter benutzt werden soll, wäre die Vorgehensweise in \ts 1 dafür wie folgt gewesen\basedon{Daniel Rosenwasser}{ts20-beta}:
+
+\tsfile{code/module/ts1.ts}
+
+Dies ist in \ts 2 nun mit einer kürzeren Syntax möglich:
+
+\tsfile{code/module/ts2.ts}
+
+Es ist ebenfalls möglich, in den Modulnamen Globbing zu verwenden. So könnten gleich alle Module, die ein bestimmtes Muster erfüllen, als Platzhalter definiert werden.
+
+\tsfile{code/module/ts2_globbing.ts}
+
+Es werden hiermit alle Module deklariert, die mit \incode{foo/} anfangen.
+
+Auch bei der Moduldeklaration mit Globbing werden die Typen vom Compiler korrekt gefolgert.
+
+\tsfile{code/module/ts2_globbing_infer.ts}
+
+\subsubsection*{Ungetypte Imports}
+Wird ein Modul importiert, für das keine Definitionen vorhanden sind, hat der Compiler dies bisher als Fehler angestrichen. Unter \ts 2 ist dies kein direkter Fehler mehr. Stattdessen wird das Modul importiert und die Imports bekommen den \tsany-Typen zugewiesen. Da es sich bei den Imports anschließend um \tsany-Variablen handelt, kann der Compiler für diese keine Typüberprüfung mehr durchführen. Ist das Compiler-Flag \incode{noImplicitAny} eingeschaltet, gilt der ungetypte Import weiterhin als Fehler, da der \tsany-Typ implizit zugeordnet wird.
+Die Deklarationen für den ungetypten Import kann später hinzugefügt werden.
+
+\section{Ökosystem}
+\label{ecosystem}
+Um bereits vorhandene \js-Bibliotheken in \ts zu nutzen, werden sogenannte ,,Declaration Files`` benötigt. Rund um die Sprache \ts hat sich deshalb schon kurz nach der ersten Vorschau-Version ein Ökosystem gebildet, das primär zur Verteilung und Verwaltung dieser Declaration Files dient.
+
+\subsection{Bisherige Lösungen}
+In \ts Version 1 wurden für die Verwaltung von Declaration Files eigens dafür entwickelte Paketmanager ,,tsd``\seegithub{tsd}{tsd-github} bzw. sein inoffizieller Nachfolger ,,typings``\seegithub{typings}{typings-github} verwendet. Beide arbeiten mit einer eigenen Datei, die im Projektverzeichnis liegt, um die für das Projekt installierten Definitionen und deren Versionen zu verwalten. Die \incode{tsd.json}/\incode{typings.json} wurden somit in die Versionsverwaltung mit aufgenommen, um nach dem Auschecken des Codes mit ihnen die entsprechenden Declaration Files nachzuinstallieren.
+
+Das \js-Ökosystem besitzt bereits mehrere Paketverwaltungen, darunter ,,npm``, ,,yarn``, ,,bower`` und viele weitere, vgl. dazu \cite{js-package-managers}. Der \ts-Compiler selbst wird bevorzugt über den npm-Paketmanager installiert\footnote{Kommandozeilenbefehl: \incode{npm install -g typescript}}. Somit hat der Großteil der \ts-Entwickler bereits npm installiert, auch wenn sie \ts nicht notwendigerweise für die Entwicklung von Node.js-Applikationen verwenden. Diese Gegebenheit und die Tatsache, dass sowohl tsd als auch typings selbst mit npm installiert werden müssen, regte zu Änderungen im \ts-Ökosystem an.
+
+\subsection{Neue Definitionsverwaltung}
+Seit \ts 2.0 wird für die Installation von Declaration Files ebenfalls npm verwendet. Durch diese Änderung fällt die Notwendigkeit einer separaten Paketverwaltung weg. Auch die Verwaltung der referenzierten Definitionen befindet sich somit nur noch innerhalb der npm verwendeten \incode{package.json}. Es müssen keine zusätzlichen Dateien wie die \tsin{tsd.json} bzw. \incode{typings.json} in die Versionsverwaltung eingecheckt werden.
+
+Angenommen, ein Entwickler installiert die Node.js-Bibliothek \tsin{request} mit folgendem Kommando:
+
+\shellfile{code/ecosystem/npm_install_request.sh}
+
+npm-Pakete, welche die Typen für andere npm-Pakete bereitstellen, besitzen den Namen \incode{@types/<paketname>}. Die zu diesem Paket gehörige Declaration Files kann deshalb mit folgendem Befehl installiert werden:
+
+\shellfile{code/ecosystem/npm_install_types_request.sh}
+
+Durch diese Konvention wird der Typisierungsprozess von npm-Paketen deutlich vereinfacht. Ist das Paket installiert, werden die Typdefinitionen im Ordner \incode{node_modules/@types} abgespeichert. An diesem Ort abgelegte Typdefinitionen werden vom Compiler in der Standardeinstellung automatisch mit in das Projekt einbezogen. Eine manuelle Konfiguration des Compilers entfällt.
+
+Dadruch, dass die Definitionen ebenfalls in der Standard-npm-Paketregistrierung vorhanden sind, werden diese auch beim installieren der Projektabhängigkeiten mit \incode{npm install} mitinstalliert. \incode{@types}-Pakete können auch als Development-Dependency (mit dem Schalter \incode{--save-dev}) installiert werden, um sie bei fertig kompilierten Projekten nicht zu inkludieren und den Dependency-Footprint klein zu halten. Dies ist bspw. nützlich, wenn ein Kommandozeilenprogramm implementiert wird, da es üblicherweise nicht von	 anderen npm-Paketen referenziert wird. Wird allerdings ein Paket entwickelt, das von anderen Paketen verwendet wird, so ist es empfehlenswert, die eigenen Typen mit auszuliefern.
+Die einzelnen \incode{@types}-Pakete können Updates erhalten und werden durch npm nach Semver-Standard auf dem aktuellen Stand gehalten.
+
+\subsubsection*{Bereitstellen von Definitionen}
+Trotz der Änderung des verwendeten Paketmanagers, ist der Prozess des Einreichens von Typdefinitionen nahezu gleich geblieben. Es ist weiterhin möglich, Definitionen im \dt\seegithub{\dt}{dt}-Repositiory einzureichen. Dort eingereichte Definitionen werden automatisch von einem Bot\seegithub{types-publisher}{types-publisher} auf der Stan\-dard-npm-Registry \incode{npmjs.org} inklusive Änderungen veröffentlicht.
+
+npm-Pakete können auch selbst ihre eigenen Definitionen enthalten, womit ein separates \incode{@types}-Paket entfällt. Die \incode{package.json} kann um ein \incode{types}-Attribut erweitert werden, um dem Compiler die Definitionen des Pakets bereitzustellen\basedon{das TypeScript-Handbuch}{ts-handbook-publishing}. Dies ist z. B. der Fall bei der \js-Bibliothek ,,Moment.js''. Eine \incode{package.json} könnte wie folgt aussehen:
+
+\jsonfile{code/ecosystem/package_types.json}
+
+Anstatt \incode{types} kann an dieser Stelle auch der Alias \incode{typings} verwendet werden. Definitions-Dateien können auch automatisch vom Compiler gefunden werden, wenn das Paket eine \incode{index.d.ts} zusammen mit der dazugehörigen \incode{index.js} im Hauptverzeichnis des Pakets liegt. Ist dies der Fall, kann das \incode{types}-Attribute auch weggelassen werden.
+
+Um zu vermeiden, dass ein Paket die eigenen Definitionen mitliefert und gleichzeitig Definitionen über das \dt-Re\-po\-si\-to\-ry verfügbar sind, besteht die Möglichkeit, ein Paket von \dt zu entfernen. Dieser Vorgang ist insbesondere nötig, um  Versionskonflikten vorzubeugen, sobald ein npm-Paket die eigenen Definitionen mitliefert.
+
+\section{Compiler und Optionen}
+\label{options}
+Die Optionen des \ts-Compilers können über zwei verschiedene Wege gesetzt werden. Die erste Methode ist über die Kommandozeilenparameter. Hier würde eine Schalter-Option bspw. mit \incode{tsc --strictNullChecks} gesetzt werden. Die zweite und meist bevorzugte Variante ist die Konfiguration über die \tsconfig, da diese mit in die Versionsverwaltung eingecheckt werden kann. Wird der Compiler ohne Option aufgerufen (\incode{tsc}), so sucht der Compiler innerhalb des aktuellen Arbeitsverzeichnis automatisch nach der \tsconfig und verwendet die dort spezifizierte Konfiguration. Mit dem Parameter \incode{-p} kann auch eine bestimmtes Projektverzeichnis kompiliert werden, in dem sich die \tsconfig befindet: \incode{tsc -p some/dir}.
+
+\subsection{Neues in der tsconfig.json}
+In der Compiler-Konfigurationsdatei \tsconfig lassen sich für Dateipfade nun auch Globbing-Muster verwenden. Dabei gibt es drei unterstützte Muster:
+
+\begin{itemize}
+\item \incode{*} Steht für keinen oder mehrere Zeichen, allerdings nicht für Ordner-Trennzeichen (\incode{"/"} bzw. \incode{"\"}).
+\item \incode{?} Steht für ein Zeichen, außer für Ordner-Trennzeichen.
+\item \incode{**/} Steht für einen beliebiges Unterverzeichnis, rekursiv.
+\end{itemize}
+
+Folgendes Beispiel inkludiert alle \incode{.ts}-Dateien, die sich im Ordner \incode{src} oder einem Unterordner davon befinden:
+
+\jsonfile{code/compiler/tsconfig_globbing.json}
+
+\paragraph{Konfigurationsvererbung}
+Eine \tsconfig kann von anderen Konfigurationsdateien erben. Wie folgendes Beispiel zeigt, kann mittels des Attributs \incode{extends} von anderen Konfigurationsdateien geerbt werden. Dabei können Attribute mit neuen Werten überschrieben werden, im Beispiel wird \incode{noImplicitAny} von \tstrue zu \tsfalse überschrieben:
+
+Datei \incode{build-configs/default.json}:
+
+\jsonfile{code/compiler/tsconfig_inheritance_0.json}
+
+Datei \incode{src/tsconfig.json}:
+
+\jsonfile{code/compiler/tsconfig_inheritance_1.json}
+
+Dabei kann bei dem Wert des \incode{extends}-Attributs die Dateiendung \incode{.json} weggelassen werden. Alle relativen Pfadangaben innerhalb einer \tsconfig-Datei (bspw. in einem \incode{exclude}-Array) werden relativ zu der \tsconfig-Datei aufgelöst, in denen sich die jeweilige Pfadangabe befindet.
+Die Attribute \incode{exclude}, \incode{include} und \incode{files} werden komplett überschrieben, sollten sie neu definiert werden. Bei dem \incode{compilerOptions}-Attribut werden die einzelnen Einstellungen überschrieben bzw. die \incode{compilerOptions} um die jeweilige Einstellung erweitert. Zirkluläre Referenzen innerhalb von Konfigurationsdateien werden vom Compiler erkannt und werden als Fehler zurückgegeben.
+
+\subsection{Neue Compileroptionen}
+In \ts 2 kamen einige Compileroptionen dazu. Nachfolgend eine Auflistung dieser.
+
+\paragraph{\incode{strictNullChecks}}
+Diese Compiler-Option schaltet Typtrennung wie in Abschnitt ,,\nameref{nullability}`` beschrieben ein. Aus Kompatibilitätsgründen ist diese Option standardmäßig ausgeschaltet.
+
+\paragraph{\incode{noUnusedLocals}}
+Der Compiler überprüft, ob es unbenutzte lokale Variablen gibt und meldet dies. Diese Option ist standardmäßig ausgeschaltet.
+
+\paragraph{\incode{noUnusedParameters}}
+Der Compiler überprüft, ob es unbenutzte Parameter gibt und meldet dies. Diese Option ist standardmäßig ausgeschaltet.
+
+\paragraph{\incode{skipLibCheck}}
+Ist diese Option eingeschaltet, werden \incode{.d.ts}-Da\-tei\-en bei der Typüberprüfung übersprungen. Sollte ein Programm sehr viele Verweise auf Declaration Files haben, welche auch untereinander Verweise aufeinander haben können, benötigt der Compiler viel Zeit dafür, diese Declaration Files zusätzlich auf korrekte Typisierung zu überprüfen. Der Großteil der Declaration Files wird allerdings automatisch generiert oder sie sind aus anderen Gründen bereits überprüft worden.
+Um die Kompiliergeschwindigkeit zu erhöhen, dann dieses Flag eingeschaltet werden. Dadurch könnten allerdings Typfehler unentdeckt bleiben.
+
+\paragraph{\incode{declarationDir}}
+Werden mittels \incode{--declaration} bei dem Kompilieren auch Declaration Files erstellt, so kann mit dem Flag \incode{--declarationDir} spezifiziert werden, in welches Verzeichnis die \incode{.d.ts}-Da\-tei\-en abgelegt werden sollen.
+
+\paragraph{\incode{alwaysStrict}}
+Wird der Quelltext mit \incode{alwaysStrict} kompliliert, wird der gesamte \ts-Code im Strict Mode -- was dem Strict-Mode von \js entspricht -- geparst. Außerdem wird bei jeder erstellten \js-Datei \incode{"use strict";} am Dateianfang emittiert.
+% Da Module immer im Strict Mode geparst werden, ist diese Flag nur für Nicht-Modul-Code empfohlen.
+
+\paragraph{\incode{noImplicitThis}}
+Lässt den Compiler einen Fehler ausgeben, sollte \tsthis innerhalb einer Funktion verwendet werden, in der \tsthis implizit deklariert wurde.
+
+\paragraph{\incode{lib}}
+Mit der \incode{--lib}-Option kann festgelegt werden, welche Declaration Files, die mit dem \ts-Compiler ausgeliefert werden, inkludiert werden sollen. Der generierte \js-Code erwartet anschließend zur Laufzeit, dass die entsprechenden Klassen/Funktionen/APIs existieren. Dies ist z. B. angebracht, wenn eine Node.js-Anwendung entwickelt wird, welche keinen Zugriff auf einen Browser-DOM benötigt. In diesem Fall kann die Option \incode{--lib es5,es6} verwendet werden, um den DOM auszuschließen bsw. nur ES5 und ES6 zu inkludieren. Eine Liste der unterstützten lib-Parameter befindet sich im \ts-Handbook. Werden Declaration Files für \dt neu entwickelt, ist es vorgeschrieben, nur die benötigten \js-APIs einzubinden.
+
+\paragraph{\incode{jsxFactory}}
+Mit diesen Schalter kann die Factory-Funktion für JSX-Elemente festgelegt werden.
+
+\paragraph{Erweiterungen von \incode{jsx}}
+Wird \incode{react-native} als Wert für den \incode{jsx}-Parameter angegeben, emittiert der \ts-Com\-pi\-ler die JSX-Syntax, ändert die Dateiendung der emittierten Datei auf \incode{.js}, statt \incode{.jsx}. Diese Option wurde hinzugefügt, da die React-Native-Toolchain davon ausgeht, dass alle Dateien die Endung \incode{.js} besitzen.
+
+\paragraph{Erweiterungen von \incode{target}}
+Es ist nun möglich, \incode{ES2016}, \incode{ES2017} und \incode{ESNext} als Ziel-Plattform zu wählen. Der emittierte \js-Code verwendet anschließend die Operationen, die in dem entsprechenden \ess definiert sind, bspw. den Exponent-Operator \tsin{**}. \incode{ESNext} steht für den neusten \ess\seegithub{tc39/proposals}{es-proposals}.
+
+\section{Ausblick}
+\ts wird fortlaufend weiterentwickelt, da immer neuere \esss erscheinen und weitere Szenarien für die Typisierung abgebildet werden müssen. Für den Mai 2017 ist \ts 2.3 geplant. Darüber hinaus existieren auch noch Pläne, die aber noch unter keinen bestimmten Meilenstein fallen. Die Features, die in Version 2.3 kommen, lassen sich schon jetzt verwenden, wenn \ts als Vorschau-Version installiert wird\footnote{\incode{npm -g i typescript@next} als Administrator/root}.
+
+\paragraph{\ts 2.3}
+Für diesen Release ist eine neue Compiler-Option namens \incode{--strict} geplant, die folgende Optionen einschaltet:
+\begin{itemize}
+\item \incode{strictNullChecks}
+\item \incode{noImplicitAny}
+\item \incode{noImplicitThis}
+\item \incode{alwaysStrict}
+\end{itemize}
+
+Zusätzlich besteht eine der größten Neuerungen aus asynchronen Iteratoren, also Iteratoren, die mit dem Promises-Konzept arbeiten und somit auch mit \tsasync/\tsawait verwendet werden können.
+
+Damit bei Generischen Typen die Typparameter weniger häufig mit angegeben werden müssen, ist es in Version 2.3 auch möglich, einen Default-Typen für Typparameter zu definieren.
+
+Darüber hinaus sind noch weitere, kleine Änderungen geplant, die z. B. das \tsthis-Schlüsselwort in Objektliteralen, den Language Service, den Generator-Support für ES3/5 oder die JSX-Unterstützung betreffen.
+
+\paragraph{Nach \ts 2.3}
+Für die fernere Zukunft sind Variadic Functions, das neue ECMA\-Script-Decorator-Proposal, Erweiterungen des Refactorings für den Language-Service und andere diverse Dinge geplant. Es steht noch nicht fest, welche Features es in einen finalen Release schaffen werden.
+
+\section{Konklusion}
+Von der Syntax über Schlüsselwörter bis hin zur verbesserten Typinferenz bietet \ts 2 viele neue Features, die es Entwicklern noch besser als zuvor erlauben, komplexe \js-Typisierungen bis auf einige Corner-Cases abzubilden.
+
+Durch die neue Typtrennung der nullable Types werden Fehler durch \tsnull- oder \tsundefined-Re\-fe\-ren\-zen minimiert. Die verbesserte Kontrollflussanalyse sorgt dafür, dass die Typen durch den Programmfluss hinweg fortlaufend überprüft und verfeinert werden. Die Erweiterung um Literal-Typen öffnet die Gelegenheit zur Verwendung von algebraischen Datentypen. Weitere neue Typen wie \tsnever oder \tsobject verleihen dem Entwickler die Möglichkeit, die Semantik des Codes noch genauer zu spezifizieren.
+
+Da sich \ts an die neuen \esss fortlaufend anpasst, können viele Situationen mit eleganterem, kürzerem Code ausgedrückt werden, wie z. B. mit den Rest- und Spread-Operationen und Kombination mit Destructuring.
+
+Durch die Erweiterungen von \tsprivate und \tsprotected-Kon\-struk\-to\-ren sowie abstrakten Variablen und abstrakten Get\-ter- und Set\-ter-Methoden können mehr etablierte Entwurfsmuster nun auch in der \ts-Welt Anwendung finden.
+
+Letztlich führt das neue Ökosystem für die Definitionsverwaltung, durch die Verwendung von Lösungen, die sich bereits etabliert haben, zu einem Prozess, der sich noch besser in die \js-Welt integriert.
+
+Insgesamt führt die Verwendung von \ts in Kombination mit allen Einstellungen, die den Code strikter behandeln (\tsnull-Überprüfung, unbenutzte Variablen, etc.) zu einer Codebase, die wartbarer und fehlerfreier ist. Die genaue Typisierung macht Refactoring-Szenarien deutlich sicherer und angenehmer als bei puren \js-Anwendungen. Eine Migration bestehender \ts-1-An\-wen\-dun\-gen ist empfohlen, besonders weil diese einige Fehler in der bestehenden Codebase aufdeckt. Dadurch, dass \ts eine Obermenge von \js ist, ist eine Migration von puren \js-Anwendungen mit deutlich weniger Aufwand verbunden als mit einer Migration auf andere Programmiersprachen (Dart, CoffeScript, etc.).
+
+\clearpage
+
+\nocite{*}
+\bibliographystyle{abbrv}
+\bibliography{sigproc}
+
+\balancecolumns
+\end{document}
