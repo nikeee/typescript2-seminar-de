@@ -1,0 +1,7 @@
+{
+    "extends": "../build-configs/default",
+    "compilerOptions": {
+        "noImplicitAny": false,
+        "strictNullChecks": true
+    }
+}

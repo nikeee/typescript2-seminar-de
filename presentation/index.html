@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TypeScript 2</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <style type="text/css">
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Neues in TypeScript 2
+
+---
+# Agenda
+
+1. Ziele von TypeScript
+2. Nullability
+3. Kontrollflussanalyse
+4. Neue Typen
+5. Syntaxerweiterungen
+7. Misc
+8. Abschluss
+---
+
+# Ziele von TypeScript
+#### 1. Typsystem von JavaScript schon zur Entwicklungszeit
+#### 2. Neuere Features früher benutzen können
+---
+class: center, middle
+# Nullability
+
+#### Compilerflag: `strictNullChecks`
+---
+# Nullability
+
+```TypeScript
+let foo: string = bar();
+console.log(foo.length);
+
+function bar(): string {
+    return null;
+}
+let baz: string = null;
+```
+
+---
+# Nullability
+
+```TypeScript
+let foo: string = bar();
+console.log(foo.length);
+
+function bar(): string {
+    return null; // Fehler
+}
+let baz: string = null; // Fehler
+```
+---
+# Nullability
+
+```TypeScript
+let foo: string = bar();
+console.log(foo.length);
+
+function bar(): string {
+    return null; // Fehler
+}
+let baz: string = null; // Fehler
+```
+
+## Fix:
+```TypeScript
+let foo: string | null = bar();
+console.log(foo.length); // Fehler!
+
+function bar(): string | null {
+    return null; // Jetzt okay
+}
+let baz: string | null = null; // Jetzt okay
+```
+---
+# Kontrollflussanalyse
+## Fix #2:
+```TypeScript
+let foo: string | null = bar();
+if(foo !== null) {
+    // foo hat jetzt nur den Typen "string",
+    // da "null" ausgeschlossen wurde
+    console.log(foo.length); // Jetzt okay
+}
+```
+---
+# Literaltypen
+- TypeScript 1.8: `let foo: "Hello" | "Hi" = "Hello";`
+- TypeScript 2: Alle Zahlen + Booleans kommen dazu
+
+```TypeScript
+declare function bar(): Boolish;
+
+type Boolish = boolean | 0 | 1 | null;
+let foo: Boolish = bar();
+if(foo) {
+    // foo ist vom Typ 1 | true
+} else if(foo === 0) {
+    // foo ist vom Typ und Wert 0
+} else {
+    // foo ist vom Typ false | null
+}
+```
+
+---
+# Never-Type
+- Als Rückgabewert bei Funktionen: **Funktion terminiert nicht**
+- Als Typ für Variablen: **Zuweisung wird nie stattfinden**
+
+```TypeScript
+function someVoid(): void {}
+function throwFoo(): never {
+     throw new Error("Not yet implemented");
+}
+// Rückgabewert automatisch bestimmt zu "never"
+function throwBar() {
+    return throwFoo();
+}
+function infiniteLoop(): never {
+    while(true) { }
+}
+let baz = someVoid(); // void
+let bazUnreached0 = infiniteLoop(); // never
+let bazUnreached1 = throwBar(); // never
+```
+
+---
+# Syntaxerweiterungen
+### Trailing Commas:
+
+```TypeScript
+var obj = {
+    foo: 42,
+    bar: 24,
+};
+var arr = [13, 37,];
+
+function foo(a, b, c,) { }
+foo(a, b, c,);
+
+enum Colors {
+    RED,
+    GREEN,
+    BLUE,
+}
+```
+
+---
+
+# Syntaxerweiterungen
+### Spread
+```TypeScript
+let person = {
+    name: "Anders",
+    age: 42,
+    github: "ahejlsberg"
+};
+let copy = { ...person };
+```
+
+### Rest
+```TypeScript
+let { name, age } = person;
+// alles Weitere (github) wird verworfen
+
+let { name, ...rest } = person;
+name; // Anders
+rest; // { age: 42, github: "ahejlsberg" }
+// es wird nichts verworfen
+
+```
+
+---
+# Misc
+- Es gibt neue Schlüsselwörter `readonly`, `keyof`
+- Weiter Typen: `object`, `this`, Mapped Types, Lookup-Types
+- Compiler hat mehr Optionen
+- `tsconfig.json` können jetzt voneinander erben
+- Definitionen laufen jetzt über `npm`
+
+---
+class: center, middle
+
+# Abschluss
+### Das war nicht alles!
+### Code + Quelltext von Seminararibeit + Präsentation:
+### [https://github.com/nikeee/typescript2-seminar-de](https://github.com/nikeee/typescript2-seminar-de)
+### TypeScript-Roadmap:
+### [https://github.com/Microsoft/TypeScript/wiki/Roadmap](https://github.com/Microsoft/TypeScript/wiki/Roadmap)
+
+    </textarea>
+    <script src="out/remark.js" type="text/javascript">
+    </script>
+    <script type="text/javascript">
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>

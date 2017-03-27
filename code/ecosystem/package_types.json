@@ -1,0 +1,7 @@
+{
+    "name": "foo",
+    "author": "Bar, Inc",
+    "version": "1.0.0",
+    "main": "./lib/main.js",
+    "types": "./lib/main.d.ts"
+}

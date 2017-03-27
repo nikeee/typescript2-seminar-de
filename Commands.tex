@@ -1,0 +1,52 @@
+% \usepackage{etoolbox}
+% \makeatletter
+% \patchcmd{\minted}{\noindent}{\bigskip\noindent}{}{}
+% \apptocmd{\endminted}{\par\bigskip}{}{}
+% \makeatother
+
+% [bgcolor=code-bg,samepage=false]
+
+\newcommand{\tsin}[1]{\mintinline{typescript}{#1}}
+\newcommand{\incode}[1]{\mintinline{bash}{#1}}
+\newcommand{\tsfile}[1]{\inputminted{typescript}{#1}}
+\newcommand{\shellfile}[1]{\inputminted{bash}{#1}}
+\newcommand{\jsonfile}[1]{\inputminted{json}{#1}}
+
+\newcommand{\ts}[0]{Type\-Script\xspace}
+\newcommand{\js}[0]{Java\-Script\xspace}
+\newcommand{\es}[1]{ECMA\-Script #1\xspace}
+\newcommand{\cs}[0]{C-Sharp\xspace}
+\newcommand{\dt}[0]{Def\-i\-nite\-ly\-Typed\xspace}
+\newcommand{\ess}[0]{ECMA\-Script-Stan\-dard\xspace}
+\newcommand{\esss}[0]{ECMA\-Script-Stan\-dards\xspace}
+
+\newcommand{\basedon}[2]{\footnote{Eigene Darstellung in Anlehnung an #1 \cite{#2}}}
+\newcommand{\seegithub}[2]{\footnote{Siehe ,,#1`` auf GitHub \cite{#2}}}
+
+\newcommand{\tstrue}{\tsin{true}\xspace}
+\newcommand{\tsfalse}{\tsin{false}\xspace}
+\newcommand{\tsnull}{\tsin{null}\xspace}
+\newcommand{\tsundefined}{\tsin{undefined}\xspace}
+\newcommand{\tsnumber}{\tsin{number}\xspace}
+\newcommand{\tsboolean}{\tsin{boolean}\xspace}
+\newcommand{\tsstring}{\tsin{string}\xspace}
+\newcommand{\tsreadonly}{\tsin{readonly}\xspace}
+\newcommand{\tskeyof}{\tsin{keyof}\xspace}
+\newcommand{\tsvar}{\tsin{var}\xspace}
+\newcommand{\tslet}{\tsin{let}\xspace}
+\newcommand{\tsconst}{\tsin{const}\xspace}
+\newcommand{\tsnever}{\tsin{never}\xspace}
+\newcommand{\tsvoid}{\tsin{void}\xspace}
+\newcommand{\tsobject}{\tsin{object}\xspace}
+\newcommand{\tsObject}{\tsin{Object}\xspace}
+\newcommand{\tsobj}{\tsin{{}}\xspace}
+\newcommand{\tsyield}{\tsin{yield}\xspace}
+\newcommand{\tsconfig}{\incode{tsconfig.json}\xspace}
+\newcommand{\tsprivate}{\tsin{private}\xspace}
+\newcommand{\tsprotected}{\tsin{protected}\xspace}
+\newcommand{\tspublic}{\tsin{public}\xspace}
+\newcommand{\tsabstract}{\tsin{abstract}\xspace}
+\newcommand{\tsany}{\tsin{any}\xspace}
+\newcommand{\tsasync}{\tsin{async}\xspace}
+\newcommand{\tsawait}{\tsin{await}\xspace}
+\newcommand{\tsthis}{\tsin{this}\xspace}
